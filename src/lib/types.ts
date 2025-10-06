@@ -9,6 +9,10 @@ export interface HealthMetric {
   bloodSugar?: number;
   sleep?: number;
   steps?: number;
+  waterIntake?: number;
+  exercise?: number;
+  calories?: number;
+  mood?: number;
   notes?: string;
 }
 
@@ -16,8 +20,43 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  password?: string;
   age?: number;
   gender?: "male" | "female" | "other";
+  height?: number;
+  currentWeight?: number;
+  onboardingCompleted?: boolean;
+  createdAt?: Date;
+  activeMetrics?: MetricType[];
+}
+
+export interface UserProfile {
+  userId: string;
+  height: number;
+  currentWeight: number;
+  targetWeight?: number;
+  age: number;
+  gender: "male" | "female" | "other";
+  activityLevel: "sedentary" | "light" | "moderate" | "active" | "very-active";
+  medicalConditions?: string[];
+}
+
+export interface Goal {
+  id: string;
+  userId: string;
+  type:
+    | "weight"
+    | "steps"
+    | "sleep"
+    | "exercise"
+    | "water"
+    | "bloodPressure"
+    | "bloodSugar";
+  targetValue: number;
+  currentValue: number;
+  deadline?: Date;
+  createdAt: Date;
+  status: "active" | "completed" | "abandoned";
 }
 
 export interface Alert {
@@ -43,4 +82,8 @@ export type MetricType =
   | "weight"
   | "bloodSugar"
   | "sleep"
-  | "steps";
+  | "steps"
+  | "waterIntake"
+  | "exercise"
+  | "calories"
+  | "mood";
