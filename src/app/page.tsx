@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Activity,
   Bell,
-  Settings,
   Sparkles,
   Calendar,
   TrendingUp,
@@ -18,51 +17,41 @@ import MetricForm from "@/components/MetricForm";
 import OnboardingFlow from "@/components/OnboardingFlow";
 import GoalsProgress from "@/components/GoalsProgress";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { useAuth } from "@clerk/nextjs";
+import { UserButton } from "@clerk/nextjs";
 import {
   getMetrics,
   generateSampleData,
-  saveMetric,
   getProfile,
-  getActiveGoals,
+  getGoals,
 } from "@/lib/storage";
 import { detectAnomalies, generateRecommendations } from "@/lib/analytics";
-import { HealthMetric, Alert } from "@/lib/types";
+import { HealthMetric, Alert, Goal, Recommendation } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
 export default function Home() {
+  const { userId } = useAuth();
   const [metrics, setMetrics] = useState<HealthMetric[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [goals, setGoals] = useState<any[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
 
-  useEffect(() => {
-    // Check if user has completed onboarding
-    const profile = getProfile();
-    if (!profile) {
-      setShowOnboarding(true);
-      setIsLoaded(true);
-    } else {
-      loadData();
-    }
-  }, []);
+  const loadData = useCallback(async () => {
+    if (!userId) return;
+    setIsLoaded(false);
+    let data = await getMetrics(userId);
 
-  const loadData = () => {
-    let data = getMetrics();
-
-    // If no data exists, generate sample data for demo
     if (data.length === 0) {
-      const sampleData = generateSampleData();
-      sampleData.forEach((metric) => saveMetric(metric));
-      data = getMetrics();
+      await generateSampleData(userId);
+      data = await getMetrics(userId);
     }
 
     setMetrics(data);
 
-    // Load goals
-    const activeGoals = getActiveGoals();
+    const activeGoals = await getGoals(userId);
     setGoals(activeGoals);
 
     const detectedAlerts = detectAnomalies(data);
@@ -70,7 +59,22 @@ export default function Home() {
     const recs = generateRecommendations(data, detectedAlerts);
     setRecommendations(recs);
     setIsLoaded(true);
-  };
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const init = async () => {
+      const profile = await getProfile(userId);
+      if (!profile) {
+        setShowOnboarding(true);
+        setIsLoaded(true);
+      } else {
+        await loadData();
+      }
+    };
+    init();
+  }, [userId, loadData]);
 
   const handleMetricAdded = () => {
     loadData();
@@ -84,6 +88,14 @@ export default function Home() {
   const handleDismissAlert = (id: string) => {
     setAlerts(alerts.filter((alert) => alert.id !== id));
   };
+
+  if (!userId) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        Loading...
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
@@ -136,10 +148,8 @@ export default function Home() {
                       <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full" />
                     )}
                   </Button>
-                  <Button variant="ghost" size="icon">
-                    <Settings className="h-5 w-5" />
-                  </Button>
                   <ThemeToggle />
+                  <UserButton afterSignOutUrl="/" />
                 </motion.div>
               </div>
             </div>

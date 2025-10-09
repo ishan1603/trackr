@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@clerk/nextjs";
 import { getMetrics } from "@/lib/storage";
 import { HealthMetric } from "@/lib/types";
 import Link from "next/link";
@@ -35,13 +36,18 @@ import {
 } from "recharts";
 
 export default function WeeklyDashboard() {
+  const { userId } = useAuth();
   const [metrics, setMetrics] = useState<HealthMetric[]>([]);
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date()));
 
   useEffect(() => {
-    const data = getMetrics();
-    setMetrics(data);
-  }, []);
+    if (!userId) return;
+    const loadData = async () => {
+      const data = await getMetrics(userId);
+      setMetrics(data);
+    };
+    loadData();
+  }, [userId]);
 
   const weekEnd = endOfWeek(weekStart);
   const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });

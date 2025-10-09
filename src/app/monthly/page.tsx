@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@clerk/nextjs";
 import { getMetrics } from "@/lib/storage";
 import { HealthMetric } from "@/lib/types";
 import Link from "next/link";
@@ -29,17 +30,21 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from "recharts";
 
 export default function MonthlyDashboard() {
+  const { userId } = useAuth();
   const [metrics, setMetrics] = useState<HealthMetric[]>([]);
-  const [monthStart, setMonthStart] = useState(startOfMonth(new Date()));
+  const [monthStart] = useState(startOfMonth(new Date()));
 
   useEffect(() => {
-    const data = getMetrics();
-    setMetrics(data);
-  }, []);
+    if (!userId) return;
+    const loadData = async () => {
+      const data = await getMetrics(userId);
+      setMetrics(data);
+    };
+    loadData();
+  }, [userId]);
 
   const monthEnd = endOfMonth(monthStart);
   const weeks = eachWeekOfInterval({ start: monthStart, end: monthEnd });

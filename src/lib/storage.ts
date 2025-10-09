@@ -1,90 +1,158 @@
-import { HealthMetric, Goal, UserProfile, User } from "./types";
+import {
+  collection,
+  addDoc,
+  getDocs,
+  deleteDoc,
+  doc,
+  query,
+  where,
+  getDoc,
+  setDoc,
+  updateDoc,
+  Timestamp,
+} from "firebase/firestore";
+import { db } from "./firebase";
+import { HealthMetric, Goal, UserProfile } from "./types";
 
-// Simulated database with localStorage
-const STORAGE_KEY = "healthtrackr_metrics";
-const USER_KEY = "healthtrackr_user";
-const PROFILE_KEY = "healthtrackr_profile";
-const GOALS_KEY = "healthtrackr_goals";
+// Assume a single, hardcoded user for now.
+// In a real app, you'd get this from Firebase Auth.
+const FAKE_USER_ID = "test-user";
 
-export function saveMetric(metric: Omit<HealthMetric, "id">): HealthMetric {
-  const metrics = getMetrics();
-  const newMetric: HealthMetric = {
+// --- Metrics ---
+
+export async function saveMetric(
+  userId: string,
+  metric: Omit<HealthMetric, "id" | "userId">
+): Promise<HealthMetric> {
+  const newMetricData = {
     ...metric,
-    id: `metric-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    userId,
+    date: Timestamp.fromDate(metric.date),
   };
-
-  metrics.unshift(newMetric);
-
-  if (typeof window !== "undefined") {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(metrics));
-  }
-
-  return newMetric;
+  const docRef = await addDoc(
+    collection(db, "users", userId, "metrics"),
+    newMetricData
+  );
+  return { ...newMetricData, date: newMetricData.date.toDate(), id: docRef.id };
 }
 
-export function getMetrics(): HealthMetric[] {
-  if (typeof window === "undefined") return [];
-
-  try {
-    const data = localStorage.getItem(STORAGE_KEY);
-    if (!data) return [];
-
-    const parsed = JSON.parse(data);
-    // Convert date strings back to Date objects
-    return parsed.map((m: any) => ({
-      ...m,
-      date: new Date(m.date),
-    }));
-  } catch {
-    return [];
-  }
+export async function getMetrics(userId: string): Promise<HealthMetric[]> {
+  const q = query(collection(db, "users", userId, "metrics"));
+  const querySnapshot = await getDocs(q);
+  const metrics: HealthMetric[] = [];
+  querySnapshot.forEach((doc) => {
+    const data = doc.data();
+    metrics.push({
+      id: doc.id,
+      ...data,
+      date: (data.date as Timestamp).toDate(),
+    } as HealthMetric);
+  });
+  return metrics.sort((a, b) => b.date.getTime() - a.date.getTime());
 }
 
-export function deleteMetric(id: string): void {
-  const metrics = getMetrics();
-  const filtered = metrics.filter((m) => m.id !== id);
-
-  if (typeof window !== "undefined") {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-  }
+export async function deleteMetric(userId: string, id: string): Promise<void> {
+  await deleteDoc(doc(db, "users", userId, "metrics", id));
 }
 
-export function getCurrentUser() {
-  if (typeof window === "undefined") return null;
+// --- User Profile ---
 
-  try {
-    const data = localStorage.getItem(USER_KEY);
-    if (!data) return null;
-    return JSON.parse(data);
-  } catch {
-    return null;
+export async function saveProfile(
+  userId: string,
+  profile: Omit<UserProfile, "userId">
+): Promise<void> {
+  const profileRef = doc(db, "users", userId, "profile", "data");
+  await setDoc(profileRef, { ...profile, userId }, { merge: true });
+}
+
+export async function getProfile(userId: string): Promise<UserProfile | null> {
+  const profileRef = doc(db, "users", userId, "profile", "data");
+  const docSnap = await getDoc(profileRef);
+
+  if (docSnap.exists()) {
+    return docSnap.data() as UserProfile;
+  } else {
+    return null; // Onboarding flow will handle profile creation
   }
 }
 
-export function saveUser(user: any) {
-  if (typeof window !== "undefined") {
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
-  }
+// --- Goals ---
+
+export async function saveGoal(
+  userId: string,
+  goal: Omit<Goal, "id" | "createdAt" | "userId">
+): Promise<Goal> {
+  const newGoalData = {
+    ...goal,
+    userId,
+    createdAt: Timestamp.now(),
+    deadline: goal.deadline ? Timestamp.fromDate(goal.deadline) : undefined,
+  };
+  const docRef = await addDoc(
+    collection(db, "users", userId, "goals"),
+    newGoalData
+  );
+  return {
+    ...newGoalData,
+    id: docRef.id,
+    createdAt: newGoalData.createdAt.toDate(),
+    deadline: newGoalData.deadline?.toDate(),
+  };
 }
 
-// Generate sample data for demo
-export function generateSampleData(): HealthMetric[] {
-  const sampleData: HealthMetric[] = [];
+export async function getGoals(userId: string): Promise<Goal[]> {
+  const q = query(collection(db, "users", userId, "goals"));
+  const querySnapshot = await getDocs(q);
+  const goals: Goal[] = [];
+  querySnapshot.forEach((doc) => {
+    const data = doc.data();
+    goals.push({
+      id: doc.id,
+      ...data,
+      createdAt: (data.createdAt as Timestamp).toDate(),
+      deadline: data.deadline
+        ? (data.deadline as Timestamp).toDate()
+        : undefined,
+    } as Goal);
+  });
+  return goals;
+}
+
+export async function updateGoal(
+  userId: string,
+  id: string,
+  updates: Partial<Goal>
+): Promise<void> {
+  const goalRef = doc(db, "users", userId, "goals", id);
+  await updateDoc(goalRef, updates);
+}
+
+export async function deleteGoal(userId: string, id: string): Promise<void> {
+  await deleteDoc(doc(db, "users", userId, "goals", id));
+}
+
+// --- Sample Data Generation ---
+
+export async function generateSampleData(userId: string): Promise<void> {
+  const metrics = await getMetrics(userId);
+  if (metrics.length > 0) {
+    console.log("Sample data already exists. Skipping generation.");
+    return;
+  }
+
+  console.log("Generating sample data...");
   const now = new Date();
 
   for (let i = 0; i < 30; i++) {
     const date = new Date(now);
     date.setDate(date.getDate() - i);
 
-    // Add some variance and trends
     const variance = (Math.random() - 0.5) * 10;
     const trend = i * 0.1;
 
-    sampleData.push({
-      id: `sample-${i}`,
-      userId: "demo-user",
+    const sampleMetric: Omit<HealthMetric, "id" | "userId"> = {
       date,
-      bloodPressureSystolic: Math.round(118 + variance + (i > 20 ? 15 : 0)), // Spike in older data
+      bloodPressureSystolic: Math.round(118 + variance + (i > 20 ? 15 : 0)),
       bloodPressureDiastolic: Math.round(78 + variance * 0.5),
       heartRate: Math.round(72 + variance),
       weight: Math.round(170 - trend + variance * 0.3),
@@ -92,89 +160,8 @@ export function generateSampleData(): HealthMetric[] {
       sleep: Math.max(4, Math.min(10, 7.5 + (Math.random() - 0.5) * 2)),
       steps: Math.round(8500 + variance * 100),
       notes: i % 5 === 0 ? "Feeling good today" : undefined,
-    });
+    };
+    await saveMetric(userId, sampleMetric);
   }
-
-  return sampleData;
-}
-
-// Profile Management
-export function saveProfile(profile: UserProfile): void {
-  if (typeof window !== "undefined") {
-    localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
-  }
-}
-
-export function getProfile(): UserProfile | null {
-  if (typeof window === "undefined") return null;
-
-  try {
-    const data = localStorage.getItem(PROFILE_KEY);
-    if (!data) return null;
-    return JSON.parse(data);
-  } catch {
-    return null;
-  }
-}
-
-// Goals Management
-export function saveGoal(goal: Omit<Goal, "id" | "createdAt">): Goal {
-  const goals = getGoals();
-  const newGoal: Goal = {
-    ...goal,
-    id: `goal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    createdAt: new Date(),
-  };
-
-  goals.push(newGoal);
-
-  if (typeof window !== "undefined") {
-    localStorage.setItem(GOALS_KEY, JSON.stringify(goals));
-  }
-
-  return newGoal;
-}
-
-export function getGoals(): Goal[] {
-  if (typeof window === "undefined") return [];
-
-  try {
-    const data = localStorage.getItem(GOALS_KEY);
-    if (!data) return [];
-
-    const parsed = JSON.parse(data);
-    return parsed.map((g: any) => ({
-      ...g,
-      createdAt: new Date(g.createdAt),
-      deadline: g.deadline ? new Date(g.deadline) : undefined,
-    }));
-  } catch {
-    return [];
-  }
-}
-
-export function updateGoal(id: string, updates: Partial<Goal>): void {
-  const goals = getGoals();
-  const index = goals.findIndex((g) => g.id === id);
-
-  if (index !== -1) {
-    goals[index] = { ...goals[index], ...updates };
-
-    if (typeof window !== "undefined") {
-      localStorage.setItem(GOALS_KEY, JSON.stringify(goals));
-    }
-  }
-}
-
-export function deleteGoal(id: string): void {
-  const goals = getGoals();
-  const filtered = goals.filter((g) => g.id !== id);
-
-  if (typeof window !== "undefined") {
-    localStorage.setItem(GOALS_KEY, JSON.stringify(filtered));
-  }
-}
-
-export function getActiveGoals(): Goal[] {
-  return getGoals().filter((g) => g.status === "active");
+  console.log("Sample data generation complete.");
 }
