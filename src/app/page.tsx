@@ -17,8 +17,7 @@ import MetricForm from "@/components/MetricForm";
 import OnboardingFlow from "@/components/OnboardingFlow";
 import GoalsProgress from "@/components/GoalsProgress";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { useAuth } from "@clerk/nextjs";
-import { UserButton } from "@clerk/nextjs";
+import { useAuth, UserButton, SignedIn, SignedOut, SignInButton } from "@clerk/nextjs";
 import {
   getMetrics,
   generateSampleData,
@@ -30,7 +29,7 @@ import { HealthMetric, Alert, Goal, Recommendation } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
-export default function Home() {
+function Dashboard() {
   const { userId } = useAuth();
   const [metrics, setMetrics] = useState<HealthMetric[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -88,14 +87,6 @@ export default function Home() {
   const handleDismissAlert = (id: string) => {
     setAlerts(alerts.filter((alert) => alert.id !== id));
   };
-
-  if (!userId) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        Loading...
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
@@ -217,5 +208,24 @@ export default function Home() {
         </>
       )}
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <>
+      <SignedIn>
+        <Dashboard />
+      </SignedIn>
+      <SignedOut>
+        <div className="flex flex-col items-center justify-center h-screen">
+          <h1 className="text-4xl font-bold mb-4">Welcome to HealthTrackr</h1>
+          <p className="text-muted-foreground mb-8">Please sign in to continue</p>
+          <SignInButton mode="modal">
+            <Button>Sign In</Button>
+          </SignInButton>
+        </div>
+      </SignedOut>
+    </>
   );
 }
