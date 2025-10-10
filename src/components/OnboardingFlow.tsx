@@ -111,42 +111,46 @@ export default function OnboardingFlow({ onComplete }: OnboardingProps) {
 
   const handleComplete = async () => {
     if (!userId) return;
+    // Save profile (sanitize numeric parsing and optional fields)
+    const ageNum = Number(formData.age);
+    const heightNum = Number(formData.height);
+    const targetWeightNum = formData.targetWeight ? Number(formData.targetWeight) : undefined;
 
-    // Save profile
     const profileData: Omit<UserProfile, "userId"> = {
-      name: formData.name,
-      email: formData.email,
-      age: parseInt(formData.age),
-      gender: formData.gender,
-      height: parseFloat(formData.height),
-      targetWeight: formData.targetWeight
-        ? parseFloat(formData.targetWeight)
+      name: formData.name || undefined,
+      email: formData.email || undefined,
+      age: Number.isFinite(ageNum) ? ageNum : undefined,
+      gender: formData.gender || undefined,
+      height: Number.isFinite(heightNum) ? heightNum : undefined,
+      targetWeight: Number.isFinite(targetWeightNum as number) ? (targetWeightNum as number) : undefined,
+      activityLevel: formData.activityLevel || undefined,
+      medicalConditions: formData.medicalConditions && formData.medicalConditions.trim().length > 0
+        ? [formData.medicalConditions.trim()]
         : undefined,
-      activityLevel: formData.activityLevel,
-      medicalConditions: formData.medicalConditions
-        ? [formData.medicalConditions]
-        : undefined,
-      trackedMetrics: formData.selectedMetrics,
+      trackedMetrics: formData.selectedMetrics.length > 0 ? formData.selectedMetrics : undefined,
       preferredUnits: {
         weight: "lbs",
         distance: "miles",
       },
     };
+
     await saveProfile(userId, profileData);
 
     // Save goals
     for (const [type, goalData] of Object.entries(formData.goals)) {
-      if (goalData.enabled && goalData.target) {
-        await saveGoal(userId, {
-          type: type as any,
-          targetValue: parseFloat(goalData.target),
-          currentValue:
-            type === "weight"
-              ? parseFloat(formData.currentWeight)
-              : 0,
-          status: "active",
-        });
-      }
+      if (!goalData.enabled || !goalData.target) continue;
+      const targetValue = Number(goalData.target);
+      if (!Number.isFinite(targetValue)) continue;
+
+      const currentValue =
+        type === "weight" ? Number(formData.currentWeight) : 0;
+
+      await saveGoal(userId, {
+        type: type as any,
+        targetValue,
+        currentValue: Number.isFinite(currentValue) ? currentValue : 0,
+        status: "active",
+      });
     }
 
     onComplete();

@@ -30,7 +30,8 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
 function Dashboard() {
-  const { userId } = useAuth();
+  const { userId: clerkUserId } = useAuth();
+  const userId = process.env.NEXT_PUBLIC_FIREBASE_ENABLED === "true" ? clerkUserId : "test-user";
   const [metrics, setMetrics] = useState<HealthMetric[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);

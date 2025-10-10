@@ -32,7 +32,18 @@ export default function RootLayout({
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
-          <FirebaseAuthProvider>
+          {process.env.NEXT_PUBLIC_FIREBASE_ENABLED === "true" ? (
+            <FirebaseAuthProvider>
+              <ThemeProvider
+                attribute="class"
+                defaultTheme="system"
+                enableSystem
+                disableTransitionOnChange
+              >
+                {children}
+              </ThemeProvider>
+            </FirebaseAuthProvider>
+          ) : (
             <ThemeProvider
               attribute="class"
               defaultTheme="system"
@@ -41,7 +52,7 @@ export default function RootLayout({
             >
               {children}
             </ThemeProvider>
-          </FirebaseAuthProvider>
+          )}
         </body>
       </html>
     </ClerkProvider>
