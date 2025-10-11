@@ -35,7 +35,9 @@ function isPermissionError(err: unknown) {
 function stripUndefined<T>(obj: T): T {
   if (obj === null || obj === undefined) return obj;
   if (Array.isArray(obj)) {
-    return (obj.map((v) => (v && typeof v === "object" ? stripUndefined(v as unknown) : v)) as unknown) as T;
+    return obj.map((v) =>
+      v && typeof v === "object" ? stripUndefined(v as unknown) : v
+    ) as unknown as T;
   }
   if (typeof obj === "object") {
     const out: Record<string, unknown> = {};
@@ -82,7 +84,10 @@ function metricsFromLocal(userId: string): HealthMetric[] {
     .filter((m) => String(m.userId) === userId)
     .map((m) => {
       const rec = m as Record<string, unknown>;
-      return ({ ...(rec as Record<string, unknown>), date: new Date(String(rec.date)) } as HealthMetric);
+      return {
+        ...(rec as Record<string, unknown>),
+        date: new Date(String(rec.date)),
+      } as HealthMetric;
     });
   return list.sort((a, b) => b.date.getTime() - a.date.getTime());
 }
@@ -105,11 +110,16 @@ function saveMetricLocal(
 ): HealthMetric {
   const all = readLocal<Array<Record<string, unknown>>>(STORAGE_KEY) || [];
   const id = `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const entry: Record<string, unknown> = { id, userId, ...(metric as unknown as Record<string, unknown>), date: metric.date.toISOString() };
+  const entry: Record<string, unknown> = {
+    id,
+    userId,
+    ...(metric as unknown as Record<string, unknown>),
+    date: metric.date.toISOString(),
+  };
   all.push(entry);
   writeLocal(STORAGE_KEY, all);
   const out = entry as Record<string, unknown>;
-  return ({
+  return {
     id: String(out.id),
     userId: String(out.userId),
     date: new Date(String(out.date)),
@@ -125,17 +135,26 @@ function saveMetricLocal(
     calories: out.calories as number | undefined,
     mood: out.mood as number | undefined,
     notes: out.notes as string | undefined,
-  } as HealthMetric);
+    source: out.source as string | undefined,
+  } as HealthMetric;
 }
 
 function deleteMetricLocal(userId: string, id: string): void {
   const all = readLocal<Array<Record<string, unknown>>>(STORAGE_KEY) || [];
-  const filtered = all.filter((m) => !(String(m.userId) === userId && String(m.id) === id));
+  const filtered = all.filter(
+    (m) => !(String(m.userId) === userId && String(m.id) === id)
+  );
   writeLocal(STORAGE_KEY, filtered);
 }
 
-function saveProfileLocal(userId: string, profile: Omit<UserProfile, "userId">) {
-  const payload: Record<string, unknown> = { userId, ...(profile as unknown as Record<string, unknown>) };
+function saveProfileLocal(
+  userId: string,
+  profile: Omit<UserProfile, "userId">
+) {
+  const payload: Record<string, unknown> = {
+    userId,
+    ...(profile as unknown as Record<string, unknown>),
+  };
   writeLocal(PROFILE_KEY + "_" + userId, payload);
 }
 
@@ -144,23 +163,33 @@ function getProfileLocal(userId: string): UserProfile | null {
   return p || null;
 }
 
-function saveGoalLocal(userId: string, goal: Omit<Goal, "id" | "createdAt" | "userId">): Goal {
+function saveGoalLocal(
+  userId: string,
+  goal: Omit<Goal, "id" | "createdAt" | "userId">
+): Goal {
   const all = readLocal<Array<Record<string, unknown>>>(GOALS_KEY) || [];
-  const id = `local-goal-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const entry: Record<string, unknown> = { id, userId, ...(goal as unknown as Record<string, unknown>), createdAt: new Date().toISOString() };
+  const id = `local-goal-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 8)}`;
+  const entry: Record<string, unknown> = {
+    id,
+    userId,
+    ...(goal as unknown as Record<string, unknown>),
+    createdAt: new Date().toISOString(),
+  };
   all.push(entry);
   writeLocal(GOALS_KEY, all);
   const out = entry as Record<string, unknown>;
-  return ({
+  return {
     id: String(out.id),
     userId: String(out.userId),
-    type: out.type as Goal['type'],
+    type: out.type as Goal["type"],
     targetValue: Number(out.targetValue),
     currentValue: Number(out.currentValue),
     deadline: out.deadline ? new Date(String(out.deadline)) : undefined,
     createdAt: new Date(String(out.createdAt)),
-    status: out.status as Goal['status'],
-  } as Goal);
+    status: out.status as Goal["status"],
+  } as Goal;
 }
 
 function getGoalsLocal(userId: string): Goal[] {
@@ -169,23 +198,25 @@ function getGoalsLocal(userId: string): Goal[] {
     .filter((g) => String(g.userId) === userId)
     .map((g) => {
       const rec = g as Record<string, unknown>;
-      return ({
+      return {
         ...(rec as Record<string, unknown>),
         id: String(rec.id),
         userId: String(rec.userId),
-        type: rec.type as Goal['type'],
+        type: rec.type as Goal["type"],
         targetValue: Number(rec.targetValue),
         currentValue: Number(rec.currentValue),
         createdAt: new Date(String(rec.createdAt)),
         deadline: rec.deadline ? new Date(String(rec.deadline)) : undefined,
-        status: rec.status as Goal['status'],
-      } as Goal);
+        status: rec.status as Goal["status"],
+      } as Goal;
     });
 }
 
 function updateGoalLocal(userId: string, id: string, updates: Partial<Goal>) {
   const all = readLocal<Array<Record<string, unknown>>>(GOALS_KEY) || [];
-  const idx = all.findIndex((g) => String(g.userId) === userId && String(g.id) === id);
+  const idx = all.findIndex(
+    (g) => String(g.userId) === userId && String(g.id) === id
+  );
   if (idx === -1) return;
   all[idx] = { ...all[idx], ...(updates as Record<string, unknown>) };
   writeLocal(GOALS_KEY, all);
@@ -193,7 +224,9 @@ function updateGoalLocal(userId: string, id: string, updates: Partial<Goal>) {
 
 function deleteGoalLocal(userId: string, id: string) {
   const all = readLocal<Array<Record<string, unknown>>>(GOALS_KEY) || [];
-  const filtered = all.filter((g) => !(String(g.userId) === userId && String(g.id) === id));
+  const filtered = all.filter(
+    (g) => !(String(g.userId) === userId && String(g.id) === id)
+  );
   writeLocal(GOALS_KEY, filtered);
 }
 
@@ -209,8 +242,15 @@ export async function saveMetric(
       userId,
       date: Timestamp.fromDate(metric.date),
     });
-    const docRef = await addDoc(collection(db, "users", userId, "metrics"), newMetricData);
-  return { ...newMetricData, date: toDateSafe(newMetricData.date)!, id: docRef.id } as HealthMetric;
+    const docRef = await addDoc(
+      collection(db, "users", userId, "metrics"),
+      newMetricData
+    );
+    return {
+      ...newMetricData,
+      date: toDateSafe(newMetricData.date)!,
+      id: docRef.id,
+    } as HealthMetric;
   } catch (err) {
     if (isPermissionError(err)) {
       // Fallback to localStorage
@@ -232,7 +272,9 @@ export async function getMetrics(userId: string): Promise<HealthMetric[]> {
         userId: String(raw.userId),
         date: toDateSafe(raw.date)!,
         bloodPressureSystolic: raw.bloodPressureSystolic as number | undefined,
-        bloodPressureDiastolic: raw.bloodPressureDiastolic as number | undefined,
+        bloodPressureDiastolic: raw.bloodPressureDiastolic as
+          | number
+          | undefined,
         heartRate: raw.heartRate as number | undefined,
         weight: raw.weight as number | undefined,
         bloodSugar: raw.bloodSugar as number | undefined,
@@ -243,6 +285,7 @@ export async function getMetrics(userId: string): Promise<HealthMetric[]> {
         calories: raw.calories as number | undefined,
         mood: raw.mood as number | undefined,
         notes: raw.notes as string | undefined,
+        source: raw.source as string | undefined,
       } as HealthMetric);
     });
     return metrics.sort((a, b) => b.date.getTime() - a.date.getTime());
@@ -267,10 +310,15 @@ export async function deleteMetric(userId: string, id: string): Promise<void> {
 }
 
 // --- Profile ---
-export async function saveProfile(userId: string, profile: Omit<UserProfile, "userId">): Promise<void> {
+export async function saveProfile(
+  userId: string,
+  profile: Omit<UserProfile, "userId">
+): Promise<void> {
   try {
     const profileRef = doc(db, "users", userId, "profile", "data");
-    await setDoc(profileRef, stripUndefined({ ...profile, userId }), { merge: true });
+    await setDoc(profileRef, stripUndefined({ ...profile, userId }), {
+      merge: true,
+    });
   } catch (err) {
     if (isPermissionError(err)) {
       saveProfileLocal(userId, profile);
@@ -304,17 +352,20 @@ export async function saveGoal(
       createdAt: Timestamp.now(),
       deadline: goal.deadline ? Timestamp.fromDate(goal.deadline) : undefined,
     });
-    const docRef = await addDoc(collection(db, "users", userId, "goals"), newGoalData);
+    const docRef = await addDoc(
+      collection(db, "users", userId, "goals"),
+      newGoalData
+    );
     const raw = newGoalData as unknown as Record<string, unknown>;
     return {
       id: docRef.id,
       userId: String(raw.userId),
-      type: raw.type as Goal['type'],
+      type: raw.type as Goal["type"],
       targetValue: Number(raw.targetValue),
       currentValue: Number(raw.currentValue),
       createdAt: toDateSafe(raw.createdAt)!,
       deadline: raw.deadline ? toDateSafe(raw.deadline) : undefined,
-      status: raw.status as Goal['status'],
+      status: raw.status as Goal["status"],
     } as Goal;
   } catch (err) {
     if (isPermissionError(err)) return saveGoalLocal(userId, goal);
@@ -332,12 +383,12 @@ export async function getGoals(userId: string): Promise<Goal[]> {
       goals.push({
         id: d.id,
         userId: String(raw.userId),
-        type: raw.type as Goal['type'],
+        type: raw.type as Goal["type"],
         targetValue: Number(raw.targetValue),
         currentValue: Number(raw.currentValue),
         createdAt: toDateSafe(raw.createdAt)!,
         deadline: raw.deadline ? toDateSafe(raw.deadline) : undefined,
-        status: raw.status as Goal['status'],
+        status: raw.status as Goal["status"],
       } as Goal);
     });
     return goals;
@@ -347,7 +398,11 @@ export async function getGoals(userId: string): Promise<Goal[]> {
   }
 }
 
-export async function updateGoal(userId: string, id: string, updates: Partial<Goal>): Promise<void> {
+export async function updateGoal(
+  userId: string,
+  id: string,
+  updates: Partial<Goal>
+): Promise<void> {
   try {
     const goalRef = doc(db, "users", userId, "goals", id);
     await updateDoc(goalRef, updates);

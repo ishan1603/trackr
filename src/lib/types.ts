@@ -14,6 +14,7 @@ export interface HealthMetric {
   calories?: number;
   mood?: number;
   notes?: string;
+  source?: string;
 }
 
 export interface User {

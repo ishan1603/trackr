@@ -42,6 +42,12 @@ A production-quality, full-stack health tracking application built with **Next.j
 - Weight management guidance
 - Wellness tips based on your data
 
+### 🔄 **Integrations & Automations**
+
+- Sandbox **Google Fit** connection with realistic dummy data imports
+- One-click weekly email reports delivered via **Gmail SMTP**
+- Browser notifications for daily logging reminders with instant test pings
+
 ### 🎨 **Beautiful UI/UX**
 
 - Modern, clean interface with **shadcn/ui** components
@@ -88,6 +94,19 @@ bun dev
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 The app will automatically generate sample data on first load to showcase all features.
+
+## 🔐 Configuration
+
+Create a `.env.local` file with the following variables to enable email delivery:
+
+```bash
+GMAIL_SMTP_USER=your.email@gmail.com
+GMAIL_SMTP_PASS=your-app-password
+```
+
+> Tip: Generate an app-specific password from your Google account if two-factor authentication is enabled.
+
+Browser notifications work entirely client-side—simply enable them from the dashboard reminder card to schedule daily nudges.
 
 ## 🎯 Usage
 

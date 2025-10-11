@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Calendar, TrendingDown, TrendingUp } from "lucide-react";
 import {
@@ -43,7 +43,6 @@ export default function MonthlyDashboard() {
   const userId = isFirebaseEnabled ? clerkUserId : "demo-user";
   const [metrics, setMetrics] = useState<HealthMetric[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [monthStart] = useState(startOfMonth(new Date()));
 
   const fetchMetrics = useCallback(async () => {
     if (!userId) {
@@ -61,8 +60,21 @@ export default function MonthlyDashboard() {
     fetchMetrics();
   }, [fetchMetrics]);
 
-  const monthEnd = endOfMonth(monthStart);
-  const weeks = eachWeekOfInterval({ start: monthStart, end: monthEnd });
+  const referenceDate = useMemo(
+    () => (metrics[0]?.date ? new Date(metrics[0].date) : new Date()),
+    [metrics]
+  );
+
+  const monthStart = useMemo(
+    () => startOfMonth(referenceDate),
+    [referenceDate]
+  );
+  const monthEnd = useMemo(() => endOfMonth(referenceDate), [referenceDate]);
+
+  const weeks = useMemo(
+    () => eachWeekOfInterval({ start: monthStart, end: monthEnd }),
+    [monthStart, monthEnd]
+  );
 
   const monthlyMetrics = metrics.filter((m) =>
     isWithinInterval(m.date, { start: monthStart, end: monthEnd })
@@ -178,7 +190,7 @@ export default function MonthlyDashboard() {
               <div>
                 <h1 className="text-2xl font-bold">Monthly Dashboard</h1>
                 <p className="text-xs text-muted-foreground">
-                  {format(monthStart, "MMMM yyyy")}
+                  {format(referenceDate, "MMMM yyyy")}
                 </p>
               </div>
             </div>

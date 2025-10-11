@@ -1,8 +1,15 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Activity, Bell, Sparkles, Calendar, TrendingUp } from "lucide-react";
+import {
+  Activity,
+  Bell,
+  Sparkles,
+  Calendar,
+  TrendingUp,
+  Plug,
+} from "lucide-react";
 import StatsOverview from "@/components/StatsOverview";
 import TrendsChart from "@/components/TrendsChart";
 import AlertsPanel from "@/components/AlertsPanel";
@@ -10,6 +17,7 @@ import RecommendationsPanel from "@/components/RecommendationsPanel";
 import MetricForm from "@/components/MetricForm";
 import OnboardingFlow from "@/components/OnboardingFlow";
 import GoalsProgress from "@/components/GoalsProgress";
+import DailyReminderCard from "@/components/DailyReminderCard";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   useAuth,
@@ -22,9 +30,16 @@ import { getMetrics, getProfile, getGoals } from "@/lib/storage";
 import { detectAnomalies, generateRecommendations } from "@/lib/analytics";
 import { HealthMetric, Alert, Goal, Recommendation } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import Link from "next/link";
 import AuroraBackground from "@/components/AuroraBackground";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatTime } from "@/lib/utils";
 
 const LOCAL_USER_ID = "demo-user";
 
@@ -52,6 +67,25 @@ function Dashboard() {
     if (!onboardingFlagKey || typeof window === "undefined") return;
     window.localStorage.setItem(onboardingFlagKey, "true");
   }, [onboardingFlagKey]);
+
+  const urgentAlerts = useMemo(
+    () =>
+      alerts.filter(
+        (alert) => alert.type === "critical" || alert.type === "warning"
+      ),
+    [alerts]
+  );
+
+  const urgentBadgeClass = (type: Alert["type"]): string => {
+    switch (type) {
+      case "critical":
+        return "bg-red-500";
+      case "warning":
+        return "bg-amber-500";
+      default:
+        return "bg-blue-500";
+    }
+  };
 
   const loadData = useCallback(async () => {
     if (!userId) return;
@@ -154,12 +188,88 @@ function Dashboard() {
                         Monthly
                       </Button>
                     </Link>
-                    <Button variant="ghost" size="icon" className="relative">
-                      <Bell className="h-5 w-5" />
-                      {alerts.length > 0 && (
-                        <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full" />
-                      )}
-                    </Button>
+                    <Link href="/connect">
+                      <Button variant="outline" size="sm" className="gap-2">
+                        <Plug className="h-4 w-4" />
+                        Connections
+                      </Button>
+                    </Link>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="relative"
+                        >
+                          <Bell className="h-5 w-5" />
+                          {urgentAlerts.length > 0 && (
+                            <span className="absolute top-1 right-1 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white">
+                              {urgentAlerts.length}
+                            </span>
+                          )}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        align="end"
+                        className="w-80 p-0"
+                        sideOffset={12}
+                      >
+                        <DropdownMenuLabel className="px-4 py-3 text-base">
+                          Urgent alerts
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <div className="max-h-72 overflow-y-auto">
+                          {urgentAlerts.length === 0 ? (
+                            <div className="px-4 py-6 text-sm text-muted-foreground">
+                              All clear. Critical metrics are within safe
+                              ranges.
+                            </div>
+                          ) : (
+                            urgentAlerts.map((alert) => (
+                              <div
+                                key={alert.id}
+                                className="flex items-start gap-3 px-4 py-3 transition hover:bg-accent/40"
+                              >
+                                <span
+                                  className={`mt-1 h-2.5 w-2.5 flex-none rounded-full ${urgentBadgeClass(
+                                    alert.type
+                                  )}`}
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-semibold leading-tight line-clamp-1">
+                                    {alert.metric}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground leading-snug line-clamp-2">
+                                    {alert.message}
+                                  </p>
+                                </div>
+                                <div className="flex flex-col items-end gap-1">
+                                  <span className="text-[10px] font-medium text-muted-foreground">
+                                    {formatTime(alert.date)}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDismissAlert(alert.id)}
+                                    className="text-[11px] font-semibold text-primary/80 hover:text-primary"
+                                  >
+                                    Dismiss
+                                  </button>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                        <DropdownMenuSeparator />
+                        <div className="px-4 py-2">
+                          <Link
+                            href="#alerts-panel"
+                            className="text-xs font-semibold text-primary hover:underline"
+                          >
+                            View full alerts center
+                          </Link>
+                        </div>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                     <ThemeToggle />
                     <UserButton afterSignOutUrl="/" />
                   </motion.div>
@@ -226,23 +336,31 @@ function Dashboard() {
                   </motion.section>
 
                   {metrics.length === 0 ? (
-                    <EmptyDashboardState
-                      userId={userId}
-                      onCreateMetric={handleMetricAdded}
-                    />
+                    <>
+                      <EmptyDashboardState
+                        userId={userId}
+                        onCreateMetric={handleMetricAdded}
+                      />
+                      <DailyReminderCard />
+                    </>
                   ) : (
                     <>
                       <GoalsProgress goals={goals} metrics={metrics} />
                       <StatsOverview metrics={metrics} />
                       <TrendsChart metrics={metrics} />
-                      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                        <AlertsPanel
-                          alerts={alerts}
-                          onDismiss={handleDismissAlert}
-                        />
-                        <RecommendationsPanel
-                          recommendations={recommendations}
-                        />
+                      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+                        <div id="alerts-panel" className="space-y-6">
+                          <AlertsPanel
+                            alerts={alerts}
+                            onDismiss={handleDismissAlert}
+                          />
+                        </div>
+                        <div className="space-y-6">
+                          <RecommendationsPanel
+                            recommendations={recommendations}
+                          />
+                          <DailyReminderCard />
+                        </div>
                       </div>
                     </>
                   )}

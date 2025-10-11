@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Activity, ArrowLeft, Calendar } from "lucide-react";
 import {
@@ -11,7 +11,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@clerk/nextjs";
+import { Input } from "@/components/ui/input";
+import { useAuth, useUser } from "@clerk/nextjs";
 import { getMetrics } from "@/lib/storage";
 import { HealthMetric } from "@/lib/types";
 import Link from "next/link";
@@ -39,14 +40,25 @@ import {
 import AuroraBackground from "@/components/AuroraBackground";
 import { formatMetricNumber } from "@/lib/utils";
 import MetricForm from "@/components/MetricForm";
+import { detectAnomalies, generateRecommendations } from "@/lib/analytics";
 
 export default function WeeklyDashboard() {
+  const { user } = useUser();
   const { userId: clerkUserId } = useAuth();
   const isFirebaseEnabled = process.env.NEXT_PUBLIC_FIREBASE_ENABLED === "true";
   const userId = isFirebaseEnabled ? clerkUserId : "demo-user";
   const [metrics, setMetrics] = useState<HealthMetric[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date()));
+  const fallbackEmail = user?.primaryEmailAddress?.emailAddress || "";
+  const [email, setEmail] = useState(fallbackEmail);
+  const [isSendingReport, setIsSendingReport] = useState(false);
+  const [reportStatus, setReportStatus] = useState<string | null>(null);
+  const [reportError, setReportError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setEmail(fallbackEmail);
+  }, [fallbackEmail]);
 
   const fetchMetrics = useCallback(async () => {
     if (!userId) {
@@ -120,6 +132,48 @@ export default function WeeklyDashboard() {
 
   const hasData = weeklyMetrics.length > 0;
 
+  const weeklyAnomalies = useMemo(
+    () => (weeklyMetrics.length > 0 ? detectAnomalies(weeklyMetrics) : []),
+    [weeklyMetrics]
+  );
+
+  const weeklyRecommendations = useMemo(
+    () =>
+      weeklyMetrics.length > 0
+        ? generateRecommendations(weeklyMetrics, weeklyAnomalies)
+        : [],
+    [weeklyMetrics, weeklyAnomalies]
+  );
+
+  const reportSummary = useMemo(() => {
+    const range = `${format(weekStart, "MMM dd")} - ${format(
+      weekEnd,
+      "MMM dd, yyyy"
+    )}`;
+    const avgSleepText =
+      weeklyStats.avgSleep != null
+        ? `${weeklyStats.avgSleep.toFixed(1)} hrs`
+        : "Not recorded";
+    const avgHeartRateText =
+      weeklyStats.avgHeartRate != null
+        ? `${Math.round(weeklyStats.avgHeartRate)} bpm`
+        : "Not recorded";
+    return [
+      `Weekly report for ${range}`,
+      `Entries logged: ${weeklyStats.entriesLogged}`,
+      `Total steps: ${weeklyStats.totalSteps.toLocaleString()}`,
+      `Average sleep: ${avgSleepText}`,
+      `Average heart rate: ${avgHeartRateText}`,
+    ].join("\n");
+  }, [
+    weekStart,
+    weekEnd,
+    weeklyStats.entriesLogged,
+    weeklyStats.totalSteps,
+    weeklyStats.avgSleep,
+    weeklyStats.avgHeartRate,
+  ]);
+
   const changeWeek = (direction: "back" | "forward") => {
     setWeekStart((prev) =>
       direction === "back"
@@ -127,6 +181,80 @@ export default function WeeklyDashboard() {
         : startOfWeek(addWeeks(prev, 1))
     );
   };
+
+  const handleSendReport = useCallback(async () => {
+    if (!email || !email.includes("@")) {
+      setReportError("Enter a valid email address.");
+      setReportStatus(null);
+      return;
+    }
+    if (!userId) {
+      setReportError("Sign in to send weekly reports.");
+      setReportStatus(null);
+      return;
+    }
+
+    setIsSendingReport(true);
+    setReportError(null);
+    setReportStatus(null);
+
+    try {
+      const recommendationsPayload = weeklyRecommendations.map((rec) => ({
+        id: rec.id,
+        title: rec.title,
+        description: rec.description,
+        priority: rec.priority,
+        category: rec.category,
+      }));
+
+      const anomaliesPayload = weeklyAnomalies.map((alert) => ({
+        id: alert.id,
+        metric: alert.metric,
+        message: alert.message,
+        type: alert.type,
+        date: alert.date.toISOString(),
+      }));
+
+      const response = await fetch("/api/send-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: email,
+          summary: reportSummary,
+          recommendations: recommendationsPayload,
+          anomalies: anomaliesPayload,
+          range: {
+            start: weekStart.toISOString(),
+            end: weekEnd.toISOString(),
+          },
+        }),
+      });
+
+      const payload = (await response.json().catch(() => ({}))) as {
+        success?: boolean;
+        error?: string;
+      };
+
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error || "Failed to send report");
+      }
+
+      setReportStatus("Weekly report sent successfully.");
+    } catch (err) {
+      console.error(err);
+      setReportError("Failed to send report. Please try again.");
+    } finally {
+      setIsSendingReport(false);
+    }
+  }, [
+    email,
+    reportSummary,
+    weeklyRecommendations,
+    weeklyAnomalies,
+    weekStart,
+    weekEnd,
+    userId,
+  ]);
 
   return (
     <AuroraBackground className="min-h-screen">
@@ -369,6 +497,45 @@ export default function WeeklyDashboard() {
                       />
                     </LineChart>
                   </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white/80 shadow-xl shadow-blue-500/10 backdrop-blur dark:bg-gray-950/70">
+                <CardHeader>
+                  <CardTitle>Send weekly report</CardTitle>
+                  <CardDescription>
+                    Email yourself a summary and tailored recommendations.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center">
+                    <Input
+                      type="email"
+                      value={email}
+                      onChange={(event) => {
+                        setEmail(event.target.value);
+                        setReportError(null);
+                        setReportStatus(null);
+                      }}
+                      placeholder="you@example.com"
+                      className="md:max-w-sm"
+                    />
+                    <Button
+                      onClick={handleSendReport}
+                      disabled={isSendingReport || !hasData}
+                      className="md:w-auto"
+                    >
+                      {isSendingReport ? "Sending..." : "Send report"}
+                    </Button>
+                  </div>
+                  {reportStatus && (
+                    <p className="text-sm text-emerald-600 dark:text-emerald-400">
+                      {reportStatus}
+                    </p>
+                  )}
+                  {reportError && (
+                    <p className="text-sm text-red-500">{reportError}</p>
+                  )}
                 </CardContent>
               </Card>
             </>
