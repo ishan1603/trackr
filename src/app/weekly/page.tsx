@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Activity, ArrowLeft, Calendar, TrendingUp } from "lucide-react";
+import { Activity, ArrowLeft, Calendar } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -21,6 +21,8 @@ import {
   endOfWeek,
   eachDayOfInterval,
   isWithinInterval,
+  addWeeks,
+  subWeeks,
 } from "date-fns";
 import {
   LineChart,
@@ -34,20 +36,37 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import AuroraBackground from "@/components/AuroraBackground";
+import { formatMetricNumber } from "@/lib/utils";
+import MetricForm from "@/components/MetricForm";
 
 export default function WeeklyDashboard() {
-  const { userId } = useAuth();
+  const { userId: clerkUserId } = useAuth();
+  const isFirebaseEnabled = process.env.NEXT_PUBLIC_FIREBASE_ENABLED === "true";
+  const userId = isFirebaseEnabled ? clerkUserId : "demo-user";
   const [metrics, setMetrics] = useState<HealthMetric[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date()));
 
-  useEffect(() => {
-    if (!userId) return;
-    const loadData = async () => {
-      const data = await getMetrics(userId);
-      setMetrics(data);
-    };
-    loadData();
+  const fetchMetrics = useCallback(async () => {
+    if (!userId) {
+      setMetrics([]);
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    const data = await getMetrics(userId);
+    setMetrics(data);
+    setIsLoading(false);
   }, [userId]);
+
+  useEffect(() => {
+    fetchMetrics();
+  }, [fetchMetrics]);
+
+  useEffect(() => {
+    setWeekStart(startOfWeek(new Date()));
+  }, []);
 
   const weekEnd = endOfWeek(weekStart);
   const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
@@ -65,9 +84,9 @@ export default function WeeklyDashboard() {
       const values = dayMetrics
         .map((m) => m[field])
         .filter((v): v is number => typeof v === "number");
-      return values.length > 0
-        ? values.reduce((sum, val) => sum + val, 0) / values.length
-        : null;
+      if (values.length === 0) return null;
+      const avg = values.reduce((sum, val) => sum + val, 0) / values.length;
+      return field === "sleep" ? Number(avg.toFixed(1)) : avg;
     };
 
     return {
@@ -82,22 +101,36 @@ export default function WeeklyDashboard() {
 
   const weeklyStats = {
     totalSteps: chartData.reduce((sum, d) => sum + (d.steps || 0), 0),
-    avgSleep:
-      chartData
-        .filter((d) => d.sleep)
-        .reduce((sum, d) => sum + (d.sleep || 0), 0) /
-        chartData.filter((d) => d.sleep).length || 0,
-    avgHeartRate:
-      chartData
-        .filter((d) => d.heartRate)
-        .reduce((sum, d) => sum + (d.heartRate || 0), 0) /
-        chartData.filter((d) => d.heartRate).length || 0,
+    avgSleep: (() => {
+      const entries = chartData.filter((d) => d.sleep != null);
+      if (entries.length === 0) return null;
+      return (
+        entries.reduce((sum, d) => sum + (d.sleep || 0), 0) / entries.length
+      );
+    })(),
+    avgHeartRate: (() => {
+      const entries = chartData.filter((d) => d.heartRate != null);
+      if (entries.length === 0) return null;
+      return (
+        entries.reduce((sum, d) => sum + (d.heartRate || 0), 0) / entries.length
+      );
+    })(),
     entriesLogged: weeklyMetrics.length,
   };
 
+  const hasData = weeklyMetrics.length > 0;
+
+  const changeWeek = (direction: "back" | "forward") => {
+    setWeekStart((prev) =>
+      direction === "back"
+        ? startOfWeek(subWeeks(prev, 1))
+        : startOfWeek(addWeeks(prev, 1))
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
-      <header className="border-b bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl sticky top-0 z-50">
+    <AuroraBackground className="min-h-screen">
+      <header className="border-b bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -106,8 +139,8 @@ export default function WeeklyDashboard() {
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
               </Link>
-              <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl">
-                <Calendar className="h-6 w-6 text-white" />
+              <div className="p-2 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 rounded-xl shadow-lg shadow-purple-500/30">
+                <Calendar className="h-6 w-6 text-white drop-shadow" />
               </div>
               <div>
                 <h1 className="text-2xl font-bold">Weekly Dashboard</h1>
@@ -117,19 +150,60 @@ export default function WeeklyDashboard() {
                 </p>
               </div>
             </div>
+            <div className="hidden items-center gap-2 md:flex">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => changeWeek("back")}
+                className="border-white/60 bg-white/70 backdrop-blur dark:border-white/10 dark:bg-white/5"
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => changeWeek("forward")}
+                className="border-white/60 bg-white/70 backdrop-blur dark:border-white/10 dark:bg-white/5"
+              >
+                Next
+              </Button>
+              <MetricForm userId={userId} onMetricAdded={fetchMetrics} />
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-12">
+        <div className="mb-6 flex flex-col gap-4 md:hidden">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => changeWeek("back")}
+              className="border-white/60 bg-white/80 backdrop-blur dark:border-white/10 dark:bg-white/5"
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => changeWeek("forward")}
+              className="border-white/60 bg-white/80 backdrop-blur dark:border-white/10 dark:bg-white/5"
+            >
+              Next
+            </Button>
+            <MetricForm userId={userId} onMetricAdded={fetchMetrics} />
+          </div>
+        </div>
+
         <div className="space-y-6">
           {/* Weekly Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              <Card>
+              <Card className="bg-white/70 shadow-lg shadow-blue-500/10 backdrop-blur dark:bg-gray-950/70">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     Total Steps
@@ -137,7 +211,7 @@ export default function WeeklyDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {weeklyStats.totalSteps.toLocaleString()}
+                    {formatMetricNumber(weeklyStats.totalSteps)}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
                     This week
@@ -151,7 +225,7 @@ export default function WeeklyDashboard() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
             >
-              <Card>
+              <Card className="bg-white/70 shadow-lg shadow-blue-500/10 backdrop-blur dark:bg-gray-950/70">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     Avg Sleep
@@ -159,7 +233,9 @@ export default function WeeklyDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {weeklyStats.avgSleep.toFixed(1)} hrs
+                    {weeklyStats.avgSleep != null
+                      ? `${formatMetricNumber(weeklyStats.avgSleep)} hrs`
+                      : "—"}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
                     Per night
@@ -173,7 +249,7 @@ export default function WeeklyDashboard() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
             >
-              <Card>
+              <Card className="bg-white/70 shadow-lg shadow-blue-500/10 backdrop-blur dark:bg-gray-950/70">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     Avg Heart Rate
@@ -181,7 +257,11 @@ export default function WeeklyDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {weeklyStats.avgHeartRate.toFixed(0)} bpm
+                    {weeklyStats.avgHeartRate != null
+                      ? `${formatMetricNumber(weeklyStats.avgHeartRate, {
+                          maximumFractionDigits: 0,
+                        })} bpm`
+                      : "—"}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">Resting</p>
                 </CardContent>
@@ -193,7 +273,7 @@ export default function WeeklyDashboard() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
             >
-              <Card>
+              <Card className="bg-white/70 shadow-lg shadow-blue-500/10 backdrop-blur dark:bg-gray-950/70">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     Entries Logged
@@ -211,63 +291,90 @@ export default function WeeklyDashboard() {
             </motion.div>
           </div>
 
-          {/* Charts */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Daily Steps</CardTitle>
-              <CardDescription>
-                Your step count for each day this week
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="day" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="steps" fill="#3b82f6" radius={[8, 8, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+          {!hasData && !isLoading ? (
+            <Card className="border-dashed border-blue-200/60 bg-white/70 p-12 text-center shadow-xl shadow-blue-500/10 backdrop-blur dark:border-blue-500/20 dark:bg-gray-950/60">
+              <CardContent className="flex flex-col items-center gap-4">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg shadow-purple-500/30">
+                  <Activity className="h-7 w-7" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-xl font-semibold">
+                    No entries yet this week
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Log your daily metrics to unlock weekly analytics, charts,
+                    and insights.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Sleep & Heart Rate Trends</CardTitle>
-              <CardDescription>Track your recovery metrics</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="day" />
-                  <YAxis yAxisId="left" />
-                  <YAxis yAxisId="right" orientation="right" />
-                  <Tooltip />
-                  <Legend />
-                  <Line
-                    yAxisId="left"
-                    type="monotone"
-                    dataKey="sleep"
-                    stroke="#8b5cf6"
-                    strokeWidth={2}
-                    name="Sleep (hrs)"
-                  />
-                  <Line
-                    yAxisId="right"
-                    type="monotone"
-                    dataKey="heartRate"
-                    stroke="#ec4899"
-                    strokeWidth={2}
-                    name="Heart Rate (bpm)"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+          {hasData && (
+            <>
+              {/* Charts */}
+              <Card className="bg-white/80 shadow-xl shadow-blue-500/10 backdrop-blur dark:bg-gray-950/70">
+                <CardHeader>
+                  <CardTitle>Daily Steps</CardTitle>
+                  <CardDescription>
+                    Your step count for each day this week
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="day" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar
+                        dataKey="steps"
+                        fill="#3b82f6"
+                        radius={[8, 8, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white/80 shadow-xl shadow-purple-500/10 backdrop-blur dark:bg-gray-950/70">
+                <CardHeader>
+                  <CardTitle>Sleep &amp; Heart Rate Trends</CardTitle>
+                  <CardDescription>Track your recovery metrics</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="day" />
+                      <YAxis yAxisId="left" />
+                      <YAxis yAxisId="right" orientation="right" />
+                      <Tooltip />
+                      <Legend />
+                      <Line
+                        yAxisId="left"
+                        type="monotone"
+                        dataKey="sleep"
+                        stroke="#8b5cf6"
+                        strokeWidth={2}
+                        name="Sleep (hrs)"
+                      />
+                      <Line
+                        yAxisId="right"
+                        type="monotone"
+                        dataKey="heartRate"
+                        stroke="#ec4899"
+                        strokeWidth={2}
+                        name="Heart Rate (bpm)"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </>
+          )}
         </div>
       </main>
-    </div>
+    </AuroraBackground>
   );
 }

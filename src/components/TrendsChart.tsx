@@ -23,6 +23,13 @@ import {
 } from "recharts";
 import { HealthMetric } from "@/lib/types";
 import { format } from "date-fns";
+import { formatMetricNumber } from "@/lib/utils";
+
+type ChartTooltipPayload = {
+  color?: string;
+  name?: string;
+  value?: number;
+};
 
 interface ChartData {
   date: string;
@@ -46,23 +53,63 @@ export default function TrendsChart({ metrics }: TrendsChartProps) {
     .slice(0, 30)
     .map((metric) => ({
       date: format(metric.date, "MMM dd"),
-      bloodPressureSystolic: metric.bloodPressureSystolic,
-      bloodPressureDiastolic: metric.bloodPressureDiastolic,
-      heartRate: metric.heartRate,
-      weight: metric.weight,
-      bloodSugar: metric.bloodSugar,
-      sleep: metric.sleep,
-      steps: metric.steps,
+      bloodPressureSystolic: metric.bloodPressureSystolic ?? undefined,
+      bloodPressureDiastolic: metric.bloodPressureDiastolic ?? undefined,
+      heartRate: metric.heartRate ?? undefined,
+      weight:
+        metric.weight != null ? Number(metric.weight.toFixed(1)) : undefined,
+      bloodSugar: metric.bloodSugar ?? undefined,
+      sleep: metric.sleep != null ? Number(metric.sleep.toFixed(1)) : undefined,
+      steps: metric.steps ?? undefined,
     }));
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  if (chartData.length === 0) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+      >
+        <Card className="border-dashed">
+          <CardHeader>
+            <CardTitle>Health Trends</CardTitle>
+            <CardDescription>
+              Charts will appear once you start logging your measurements.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-blue-200/60 bg-blue-50/40 p-8 text-center dark:border-blue-500/20 dark:bg-blue-950/20">
+              <p className="text-sm text-muted-foreground">
+                Add health metrics to unlock multi-dimensional trend analysis
+                and predictive insights.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  }
+
+  const CustomTooltip = ({
+    active,
+    payload,
+    label,
+  }: {
+    active?: boolean;
+    payload?: ChartTooltipPayload[];
+    label?: string;
+  }) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-background border rounded-lg p-3 shadow-lg">
           <p className="font-medium mb-1">{label}</p>
-          {payload.map((entry: any, index: number) => (
-            <p key={index} className="text-sm" style={{ color: entry.color }}>
-              {entry.name}: {entry.value}
+          {payload.map((entry, index) => (
+            <p
+              key={index}
+              className="text-sm"
+              style={{ color: entry.color ?? "inherit" }}
+            >
+              {entry.name}: {formatMetricNumber(entry.value ?? null)}
             </p>
           ))}
         </div>
