@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Goal, HealthMetric } from "@/lib/types";
+import { formatMetricNumber } from "@/lib/utils";
 import { Target, TrendingUp, Award, Zap } from "lucide-react";
 
 interface GoalsProgressProps {
@@ -127,8 +128,8 @@ export default function GoalsProgress({ goals, metrics }: GoalsProgressProps) {
 
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">
-                    Current: {goal.currentValue.toFixed(1)} → Target:{" "}
-                    {goal.targetValue}
+                    Current: {formatMetricNumber(goal.currentValue)} → Target:{" "}
+                    {formatMetricNumber(goal.targetValue)}
                   </span>
                   <span className="text-xs font-medium text-primary">
                     {message.split(" ")[0]}

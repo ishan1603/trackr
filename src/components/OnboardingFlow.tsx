@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState } from "react";
@@ -14,8 +15,9 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { User, UserProfile, Goal, MetricType } from "@/lib/types";
-import { saveProfile, saveUser, saveGoal } from "@/lib/storage";
+import { useAuth, useUser } from "@clerk/nextjs";
+import { UserProfile, MetricType } from "@/lib/types";
+import { saveProfile, saveGoal } from "@/lib/storage";
 import { ArrowRight, ArrowLeft, Check } from "lucide-react";
 
 interface OnboardingProps {
@@ -56,10 +58,12 @@ const availableMetrics: {
 ];
 
 export default function OnboardingFlow({ onComplete }: OnboardingProps) {
+  const { userId } = useAuth();
+  const { user } = useUser();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
+    name: user?.fullName || "",
+    email: user?.primaryEmailAddress?.emailAddress || "",
     age: "",
     gender: "other" as "male" | "female" | "other",
     height: "",
@@ -90,13 +94,14 @@ export default function OnboardingFlow({ onComplete }: OnboardingProps) {
 
   const totalSteps = 4;
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (step < totalSteps) {
       setStep(step + 1);
     } else {
-      handleComplete();
+      await handleComplete();
     }
   };
+
 
   const handleBack = () => {
     if (step > 1) {
@@ -104,52 +109,49 @@ export default function OnboardingFlow({ onComplete }: OnboardingProps) {
     }
   };
 
-  const handleComplete = () => {
-    // Save user data
-    const user: User = {
-      id: `user-${Date.now()}`,
-      name: formData.name,
-      email: formData.email,
-      age: parseInt(formData.age),
-      gender: formData.gender,
-      height: parseFloat(formData.height),
-      currentWeight: parseFloat(formData.currentWeight),
-      onboardingCompleted: true,
-      createdAt: new Date(),
-      activeMetrics: formData.selectedMetrics,
-    };
-    saveUser(user);
+  const handleComplete = async () => {
+    if (!userId) return;
+    // Save profile (sanitize numeric parsing and optional fields)
+    const ageNum = Number(formData.age);
+    const heightNum = Number(formData.height);
+    const targetWeightNum = formData.targetWeight ? Number(formData.targetWeight) : undefined;
 
-    // Save profile
-    const profile: UserProfile = {
-      userId: user.id,
-      height: parseFloat(formData.height),
-      currentWeight: parseFloat(formData.currentWeight),
-      targetWeight: formData.targetWeight
-        ? parseFloat(formData.targetWeight)
+    const profileData: Omit<UserProfile, "userId"> = {
+      name: formData.name || undefined,
+      email: formData.email || undefined,
+      age: Number.isFinite(ageNum) ? ageNum : undefined,
+      gender: formData.gender || undefined,
+      height: Number.isFinite(heightNum) ? heightNum : undefined,
+      targetWeight: Number.isFinite(targetWeightNum as number) ? (targetWeightNum as number) : undefined,
+      activityLevel: formData.activityLevel || undefined,
+      medicalConditions: formData.medicalConditions && formData.medicalConditions.trim().length > 0
+        ? [formData.medicalConditions.trim()]
         : undefined,
-      age: parseInt(formData.age),
-      gender: formData.gender,
-      activityLevel: formData.activityLevel,
-      medicalConditions: formData.medicalConditions
-        ? [formData.medicalConditions]
-        : undefined,
+      trackedMetrics: formData.selectedMetrics.length > 0 ? formData.selectedMetrics : undefined,
+      preferredUnits: {
+        weight: "lbs",
+        distance: "miles",
+      },
     };
-    saveProfile(profile);
+
+    await saveProfile(userId, profileData);
 
     // Save goals
-    Object.entries(formData.goals).forEach(([type, goalData]) => {
-      if (goalData.enabled && goalData.target) {
-        saveGoal({
-          userId: user.id,
-          type: type as any,
-          targetValue: parseFloat(goalData.target),
-          currentValue:
-            type === "weight" ? parseFloat(formData.currentWeight) : 0,
-          status: "active",
-        });
-      }
-    });
+    for (const [type, goalData] of Object.entries(formData.goals)) {
+      if (!goalData.enabled || !goalData.target) continue;
+      const targetValue = Number(goalData.target);
+      if (!Number.isFinite(targetValue)) continue;
+
+      const currentValue =
+        type === "weight" ? Number(formData.currentWeight) : 0;
+
+      await saveGoal(userId, {
+        type: type as any,
+        targetValue,
+        currentValue: Number.isFinite(currentValue) ? currentValue : 0,
+        status: "active",
+      });
+    }
 
     onComplete();
   };
@@ -178,7 +180,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingProps) {
                   Welcome to HealthTrackr! 🎉
                 </CardTitle>
                 <CardDescription className="mt-2">
-                  Let's personalize your health journey
+                  Let&apos;s personalize your health journey
                 </CardDescription>
               </div>
               <div className="text-sm text-muted-foreground">

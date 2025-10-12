@@ -1,14 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -26,9 +18,10 @@ import { HealthMetric } from "@/lib/types";
 
 interface MetricFormProps {
   onMetricAdded: () => void;
+  userId?: string | null;
 }
 
-export default function MetricForm({ onMetricAdded }: MetricFormProps) {
+export default function MetricForm({ onMetricAdded, userId }: MetricFormProps) {
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
     bloodPressureSystolic: "",
@@ -41,11 +34,15 @@ export default function MetricForm({ onMetricAdded }: MetricFormProps) {
     notes: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const metric: Omit<HealthMetric, "id"> = {
-      userId: "demo-user",
+    if (!userId) {
+      console.warn("Cannot save metric without a user id");
+      return;
+    }
+
+    const metric: Omit<HealthMetric, "id" | "userId"> = {
       date: new Date(),
       bloodPressureSystolic: formData.bloodPressureSystolic
         ? Number(formData.bloodPressureSystolic)
@@ -61,28 +58,32 @@ export default function MetricForm({ onMetricAdded }: MetricFormProps) {
       notes: formData.notes || undefined,
     };
 
-    saveMetric(metric);
+    try {
+      await saveMetric(userId, metric);
 
-    // Reset form
-    setFormData({
-      bloodPressureSystolic: "",
-      bloodPressureDiastolic: "",
-      heartRate: "",
-      weight: "",
-      bloodSugar: "",
-      sleep: "",
-      steps: "",
-      notes: "",
-    });
+      // Reset form
+      setFormData({
+        bloodPressureSystolic: "",
+        bloodPressureDiastolic: "",
+        heartRate: "",
+        weight: "",
+        bloodSugar: "",
+        sleep: "",
+        steps: "",
+        notes: "",
+      });
 
-    setOpen(false);
-    onMetricAdded();
+      setOpen(false);
+      onMetricAdded();
+    } catch (error) {
+      console.error("Failed to save metric", error);
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="lg" className="gap-2">
+        <Button size="lg" className="gap-2" disabled={!userId}>
           <Plus className="h-5 w-5" />
           Log Health Data
         </Button>
@@ -91,7 +92,8 @@ export default function MetricForm({ onMetricAdded }: MetricFormProps) {
         <DialogHeader>
           <DialogTitle>Log Your Health Metrics</DialogTitle>
           <DialogDescription>
-            Enter your current health data. You don't need to fill all fields.
+            Enter your current health data. You don&apos;t need to fill all
+            fields.
           </DialogDescription>
         </DialogHeader>
 

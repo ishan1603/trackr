@@ -11,6 +11,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { HealthMetric } from "@/lib/types";
+import { formatMetricNumber } from "@/lib/utils";
 
 interface StatsOverviewProps {
   metrics: HealthMetric[];
@@ -23,9 +24,13 @@ export default function StatsOverview({ metrics }: StatsOverviewProps) {
     {
       title: "Blood Pressure",
       value:
-        latestMetric?.bloodPressureSystolic &&
-        latestMetric?.bloodPressureDiastolic
-          ? `${latestMetric.bloodPressureSystolic}/${latestMetric.bloodPressureDiastolic}`
+        latestMetric?.bloodPressureSystolic != null &&
+        latestMetric?.bloodPressureDiastolic != null
+          ? `${formatMetricNumber(latestMetric.bloodPressureSystolic, {
+              maximumFractionDigits: 0,
+            })}/${formatMetricNumber(latestMetric.bloodPressureDiastolic, {
+              maximumFractionDigits: 0,
+            })}`
           : "N/A",
       unit: "mmHg",
       icon: Activity,
@@ -34,7 +39,12 @@ export default function StatsOverview({ metrics }: StatsOverviewProps) {
     },
     {
       title: "Heart Rate",
-      value: latestMetric?.heartRate || "N/A",
+      value:
+        latestMetric?.heartRate != null
+          ? formatMetricNumber(latestMetric.heartRate, {
+              maximumFractionDigits: 0,
+            })
+          : "N/A",
       unit: "bpm",
       icon: Heart,
       color: "text-pink-500",
@@ -42,7 +52,13 @@ export default function StatsOverview({ metrics }: StatsOverviewProps) {
     },
     {
       title: "Weight",
-      value: latestMetric?.weight || "N/A",
+      value:
+        latestMetric?.weight != null
+          ? formatMetricNumber(latestMetric.weight, {
+              maximumFractionDigits: 1,
+              minimumFractionDigits: 1,
+            })
+          : "N/A",
       unit: "lbs",
       icon: Weight,
       color: "text-blue-500",
@@ -50,7 +66,12 @@ export default function StatsOverview({ metrics }: StatsOverviewProps) {
     },
     {
       title: "Blood Sugar",
-      value: latestMetric?.bloodSugar || "N/A",
+      value:
+        latestMetric?.bloodSugar != null
+          ? formatMetricNumber(latestMetric.bloodSugar, {
+              maximumFractionDigits: 0,
+            })
+          : "N/A",
       unit: "mg/dL",
       icon: Droplet,
       color: "text-orange-500",
@@ -58,7 +79,13 @@ export default function StatsOverview({ metrics }: StatsOverviewProps) {
     },
     {
       title: "Sleep",
-      value: latestMetric?.sleep || "N/A",
+      value:
+        latestMetric?.sleep != null
+          ? formatMetricNumber(latestMetric.sleep, {
+              maximumFractionDigits: 1,
+              minimumFractionDigits: 1,
+            })
+          : "N/A",
       unit: "hrs",
       icon: Moon,
       color: "text-purple-500",
@@ -66,7 +93,10 @@ export default function StatsOverview({ metrics }: StatsOverviewProps) {
     },
     {
       title: "Steps",
-      value: latestMetric?.steps ? latestMetric.steps.toLocaleString() : "N/A",
+      value:
+        latestMetric?.steps != null
+          ? formatMetricNumber(latestMetric.steps, { maximumFractionDigits: 0 })
+          : "N/A",
       unit: "steps",
       icon: TrendingUp,
       color: "text-green-500",
@@ -103,7 +133,7 @@ export default function StatsOverview({ metrics }: StatsOverviewProps) {
       animate="visible"
       className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
     >
-      {stats.map((stat, index) => {
+      {stats.map((stat) => {
         const Icon = stat.icon;
         return (
           <motion.div key={stat.title} variants={itemVariants}>

@@ -14,6 +14,7 @@ export interface HealthMetric {
   calories?: number;
   mood?: number;
   notes?: string;
+  source?: string;
 }
 
 export interface User {
@@ -32,12 +33,18 @@ export interface User {
 
 export interface UserProfile {
   userId: string;
-  height: number;
-  currentWeight: number;
+  name: string;
+  email: string;
+  trackedMetrics: MetricType[];
+  preferredUnits: {
+    weight: "lbs" | "kg";
+    distance: "miles" | "km";
+  };
+  height?: number;
   targetWeight?: number;
-  age: number;
-  gender: "male" | "female" | "other";
-  activityLevel: "sedentary" | "light" | "moderate" | "active" | "very-active";
+  age?: number;
+  gender?: "male" | "female" | "other";
+  activityLevel?: "sedentary" | "light" | "moderate" | "active" | "very-active";
   medicalConditions?: string[];
 }
 
