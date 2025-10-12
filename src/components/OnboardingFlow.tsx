@@ -102,32 +102,44 @@ export default function OnboardingFlow({ onComplete }: OnboardingProps) {
     }
   };
 
-
   const handleBack = () => {
     if (step > 1) {
       setStep(step - 1);
     }
   };
 
+  const parseOptionalNumber = (value: string) => {
+    if (!value || value.trim().length === 0) {
+      return undefined;
+    }
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  };
+
   const handleComplete = async () => {
     if (!userId) return;
     // Save profile (sanitize numeric parsing and optional fields)
-    const ageNum = Number(formData.age);
-    const heightNum = Number(formData.height);
-    const targetWeightNum = formData.targetWeight ? Number(formData.targetWeight) : undefined;
+    const ageNum = parseOptionalNumber(formData.age);
+    const heightNum = parseOptionalNumber(formData.height);
+    const targetWeightNum = parseOptionalNumber(formData.targetWeight);
 
     const profileData: Omit<UserProfile, "userId"> = {
-      name: formData.name || undefined,
-      email: formData.email || undefined,
-      age: Number.isFinite(ageNum) ? ageNum : undefined,
+      name: formData.name.trim(),
+      email: formData.email.trim(),
+      age: ageNum,
       gender: formData.gender || undefined,
-      height: Number.isFinite(heightNum) ? heightNum : undefined,
-      targetWeight: Number.isFinite(targetWeightNum as number) ? (targetWeightNum as number) : undefined,
+      height: heightNum,
+      targetWeight: targetWeightNum,
       activityLevel: formData.activityLevel || undefined,
-      medicalConditions: formData.medicalConditions && formData.medicalConditions.trim().length > 0
-        ? [formData.medicalConditions.trim()]
-        : undefined,
-      trackedMetrics: formData.selectedMetrics.length > 0 ? formData.selectedMetrics : undefined,
+      medicalConditions:
+        formData.medicalConditions &&
+        formData.medicalConditions.trim().length > 0
+          ? [formData.medicalConditions.trim()]
+          : undefined,
+      trackedMetrics:
+        formData.selectedMetrics.length > 0
+          ? [...formData.selectedMetrics]
+          : ["steps"],
       preferredUnits: {
         weight: "lbs",
         distance: "miles",
