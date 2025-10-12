@@ -1,233 +1,103 @@
 # 🏥 HealthTrackr
 
-A production-quality, full-stack health tracking application built with **Next.js 15**, **TypeScript**, **shadcn/ui**, and **Framer Motion**. HealthTrackr helps users log daily health metrics, visualize trends, detect anomalies, and receive personalized health recommendations.
+Modern personal health command center built with **Next.js 15**, **TypeScript**, **shadcn/ui**, and **Framer Motion**. HealthTrackr lets anyone capture wellness metrics, surface trends, and stay on top of daily routines within a single, responsive dashboard.
 
-![HealthTrackr Dashboard](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)
-![Next.js](https://img.shields.io/badge/Next.js-15-black)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.0-38bdf8)
+## 🔗 Live Demo
 
-## ✨ Features
+- Production: [https://trackr-thi1.vercel.app/](https://trackr-thi1.vercel.app/)
+- Tested on both desktop and mobile breakpoints; no install required.
 
-### 📊 **Health Metrics Tracking**
+## 🚀 Elevator Pitch
 
-- **Blood Pressure** (Systolic/Diastolic)
-- **Heart Rate** monitoring
-- **Weight** tracking
-- **Blood Sugar** levels
-- **Sleep Duration** logging
-- **Daily Steps** counter
-- Personal notes for each entry
-
-### 📈 **Data Visualization**
-
-- Interactive trend charts with **Recharts**
-- Multiple time-series views for each metric
-- Beautiful, responsive charts with smooth animations
-- Switch between different health metrics seamlessly
-
-### 🔔 **Intelligent Anomaly Detection**
-
-- Real-time analysis of health data
-- Critical alerts for dangerous levels
-- Warning notifications for concerning trends
-- Automatic detection of sudden changes
-- Color-coded alert system (Critical/Warning/Info)
-
-### 💡 **Personalized Recommendations**
-
-- AI-powered health insights
-- Sleep improvement suggestions
-- Activity level recommendations
-- Weight management guidance
-- Wellness tips based on your data
-
-### 🔄 **Integrations & Automations**
-
-- Sandbox **Google Fit** connection with realistic dummy data imports
-- One-click weekly email reports delivered via **Gmail SMTP**
-- Browser notifications for daily logging reminders with instant test pings
-
-### 🎨 **Beautiful UI/UX**
-
-- Modern, clean interface with **shadcn/ui** components
-- Smooth animations powered by **Framer Motion**
-- Fully mobile-responsive design
-- Dark mode support
-- Gradient backgrounds and glassmorphism effects
-- Intuitive navigation and interaction
-
-### 🚀 **Performance & Quality**
-
-- Built with **Next.js 15** App Router
-- TypeScript for type safety
-- Modular, scalable code architecture
-- Client-side data persistence with localStorage
-- Sample data generation for quick demos
+HealthTrackr is a full-stack experience that makes quantified self data approachable. Judges can step through onboarding, import wearable samples, log daily vitals, review anomaly alerts, and export findings in minutes. Everything runs in the browser with polished motion design and pragmatic performance defaults.
 
 ## 🛠️ Tech Stack
 
-- **Framework**: Next.js 15 (App Router)
+- **Framework**: Next.js 15 App Router
 - **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **UI Components**: shadcn/ui (Radix UI primitives)
-- **Animations**: Framer Motion
-- **Charts**: Recharts
-- **Icons**: Lucide React
-- **Forms**: React Hook Form + Zod validation
-- **Date Handling**: date-fns
+- **Styling**: Tailwind CSS with shadcn/ui and Radix primitives
+- **Animations**: Framer Motion for component transitions
+- **Charts**: Recharts for multi-series visualizations
+- **Auth**: Clerk (optional, ready for email magic links)
+- **Data Layer**: Firebase
+- **Emailing**: Nodemailer + Gmail SMTP
 
-## 📦 Installation & Getting Started
+## 🏆 Why It Stands Out
 
-First, run the development server:
+- **Guided onboarding** captures high-value profile details and preferred metrics in under a minute.
+- **Wearable integrations sandbox** (Google Fit, Fitbit, Apple Health) delivers realistic dummy records, summaries, and CSV export without external credentials.
+- **Smart alerts and recommendations** highlight spikes, dips, and weekly focus areas derived from rule-based analytics.
+- **Goal tracking** keeps weight, steps, sleep, exercise, and hydration milestones front and center.
+- **Responsive glassmorphism UI** pairs Framer Motion animation with shadcn/ui components for an energetic, production-ready feel.
+
+## 🧭 Demo Script (5 Minutes)
+
+1. **Launch & Sign In** – Use the “Launch your dashboard” button and follow Clerk’s email sign-in (magic link or code). On first load, hit the guided onboarding flow.
+2. **Complete Onboarding** – Provide sample profile info, pick tracked metrics, and enable a goal to show goal cards.
+3. **Import Wearable Data** – Visit `/connect`, connect to a provider, preview the dummy data, export the CSV, and sync it into storage.
+4. **Review Dashboard** – Back on `/`, highlight the goals, statistics overview, collapsible trends chart, and alert center.
+5. **Send Weekly Report** – Trigger the weekly email from the reminder card or inspect the recommendations list for actionable insights.
+
+## 🧱 Architecture & Stack
+
+- **Framework**: Next.js 15 App Router (React Server Components + Client Components mix)
+- **Language**: TypeScript with strict linting and type checks
+- **Styling**: Tailwind CSS, shadcn/ui, Radix primitives
+- **Animations**: Framer Motion for transitions and onboarding steps
+- **Charts**: Recharts for multi-series visualizations
+- **Auth**: Clerk (bring-your-own session provider)
+- **Data layer**: Local-first storage with Firebase-ready abstractions
+
+## � Integrations & Automations
+
+- Wearable sandboxes provide seven-day data slices for each provider along with step, sleep, and weight summaries.
+- Scheduled reminder card uses the Notifications API to nudge users for daily logging.
+- Weekly email report endpoint delivers digest summaries via server actions.
+- CSV exporter converts any wearable dataset into judge-friendly spreadsheets.
+
+## 🛠️ Local Setup (Optional)
 
 ```bash
+git clone https://github.com/ishan1603/trackr.git
+cd trackr
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000` and sign in through Clerk’s development instance. The app seeds demo data automatically once wearable imports run.
 
-The app will automatically generate sample data on first load to showcase all features.
-
-## 🔐 Configuration
-
-Create a `.env.local` file with the following variables to enable email delivery:
-
-```bash
-GMAIL_SMTP_USER=your.email@gmail.com
-GMAIL_SMTP_PASS=your-app-password
-```
-
-> Tip: Generate an app-specific password from your Google account if two-factor authentication is enabled.
-
-Browser notifications work entirely client-side—simply enable them from the dashboard reminder card to schedule daily nudges.
-
-## 🎯 Usage
-
-### Adding Health Metrics
-
-1. Click the **"Log Health Data"** button in the top right
-2. Fill in any metrics you want to track (not all fields required)
-3. Add optional notes about how you're feeling
-4. Click **"Save Metrics"**
-
-### Viewing Trends
-
-- Navigate to the **Trends Chart** section
-- Switch between different metrics using the tabs
-- Hover over data points for detailed information
-- Charts automatically update when new data is added
-
-### Monitoring Alerts
-
-- Check the **Health Alerts** panel for any warnings
-- Critical alerts appear in red and require immediate attention
-- Warning alerts (yellow) suggest consulting a healthcare provider
-- Info alerts (blue) provide general health insights
-- Dismiss alerts by clicking the X button
-
-### Getting Recommendations
-
-- View personalized recommendations in the **Recommendations** panel
-- High-priority items (red border) require immediate action
-- Medium-priority items (yellow border) are suggestions for improvement
-- Low-priority items (green border) are general wellness tips
-
-## 🏗️ Project Structure
+### Environment Variables
 
 ```
-trackr/
-├── src/
-│   ├── app/
-│   │   ├── favicon.ico
-│   │   ├── globals.css
-│   │   ├── layout.tsx
-│   │   └── page.tsx
-│   ├── components/
-│   │   ├── ui/               # shadcn/ui components
-│   │   │   ├── button.tsx
-│   │   │   ├── card.tsx
-│   │   │   ├── dialog.tsx
-│   │   │   ├── input.tsx
-│   │   │   ├── label.tsx
-│   │   │   └── tabs.tsx
-│   │   ├── AlertsPanel.tsx
-│   │   ├── MetricForm.tsx
-│   │   ├── RecommendationsPanel.tsx
-│   │   ├── StatsOverview.tsx
-│   │   └── TrendsChart.tsx
-│   └── lib/
-│       ├── analytics.ts      # Anomaly detection & recommendations
-│       ├── storage.ts        # Data persistence
-│       ├── types.ts          # TypeScript types
-│       └── utils.ts          # Utility functions
-├── public/
-├── package.json
-├── tailwind.config.ts
-├── tsconfig.json
-└── README.md
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_key
+CLERK_SECRET_KEY=your_clerk_secret
+GMAIL_SMTP_USER=example@gmail.com
+GMAIL_SMTP_PASS=app-password
+NEXT_PUBLIC_FIREBASE_ENABLED=false
 ```
 
-## 🧩 Key Components
+Leaving `NEXT_PUBLIC_FIREBASE_ENABLED` as `false` keeps everything in the local-first demo mode used for the hackathon build.
 
-### `MetricForm`
+## ✅ Quality Checklist
 
-Modal form for logging health metrics with validation and user-friendly inputs.
+- `npm run lint` – ESLint and TypeScript checks (passes cleanly)
+- `npm run build` – Production build validated (Next.js 15)
+- Tested against desktop (1440px), tablet (834px), and mobile (390px) breakpoints
+- All user-facing copy reviewed to avoid medical guarantees
 
-### `StatsOverview`
+## 📂 Project Structure at a Glance
 
-Dashboard cards showing the latest values for all health metrics with icons and color coding.
-
-### `TrendsChart`
-
-Interactive charts displaying historical data with multiple metric views and custom tooltips.
-
-### `AlertsPanel`
-
-Real-time health alerts with severity levels and dismissible notifications.
-
-### `RecommendationsPanel`
-
-Personalized health insights and actionable recommendations based on user data.
-
-## 🔒 Data Storage
-
-Currently uses **localStorage** for client-side data persistence. Perfect for demos and MVPs.
-
-**Future Enhancements:**
-
-- Backend integration with PostgreSQL/MongoDB
-- User authentication (NextAuth.js)
-- Cloud data synchronization
-- Data export/import functionality
-
-## 🚀 Deployment
-
-### Vercel (Recommended)
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-```bash
-npm run build
-vercel deploy
 ```
-
-Check out the [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-
-## ⚠️ Disclaimer
-
-**HealthTrackr is for demonstration and educational purposes only.** It is not a substitute for professional medical advice, diagnosis, or treatment. Always seek the advice of your physician or other qualified health provider with any questions you may have regarding a medical condition.
-
-## 📝 License
-
-This project is open source and available under the MIT License.
+src/
+├── app/                # Next.js routes and layouts
+│   ├── page.tsx        # Authenticated dashboard
+│   ├── connect/        # Wearable import hub
+│   ├── weekly/         # Weekly analytics view
+│   └── monthly/        # Monthly analytics view
+├── components/         # UI, forms, charts, panels
+└── lib/                # Analytics, storage, sample data
+```
 
 ---
 
-**Built with ❤️ using Next.js, TypeScript, and Modern Web Technologies**
+Thank you FLIPR LABS for this surreal learning experience - Team Ice Kings.

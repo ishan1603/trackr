@@ -174,7 +174,7 @@ function Dashboard() {
                   <motion.div
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="flex items-center gap-2"
+                    className="flex flex-wrap items-center justify-end gap-2"
                   >
                     <Link href="/weekly">
                       <Button variant="outline" size="sm" className="gap-2">
