@@ -1,3 +1,5 @@
+Thank you FLIPR LABS for this surreal learning experience - Team Ice Kings.
+
 # 🏥 HealthTrackr
 
 Modern personal health command center built with **Next.js 15**, **TypeScript**, **shadcn/ui**, and **Framer Motion**. HealthTrackr lets anyone capture wellness metrics, surface trends, and stay on top of daily routines within a single, responsive dashboard.
@@ -7,9 +9,9 @@ Modern personal health command center built with **Next.js 15**, **TypeScript**,
 - Production: [https://trackr-thi1.vercel.app/](https://trackr-thi1.vercel.app/)
 - Tested on both desktop and mobile breakpoints; no install required.
 
-## 🚀 Elevator Pitch
+## 🚀 Introduction
 
-HealthTrackr is a full-stack experience that makes quantified self data approachable. Judges can step through onboarding, import wearable samples, log daily vitals, review anomaly alerts, and export findings in minutes. Everything runs in the browser with polished motion design and pragmatic performance defaults.
+HealthTrackr is a full-stack experience that makes quantified self data approachable. One can step through onboarding, import wearable samples, log daily vitals, review anomaly alerts, and export findings in minutes. Everything runs in the browser with polished motion design and pragmatic performance defaults.
 
 ## 🛠️ Tech Stack
 
@@ -38,15 +40,6 @@ HealthTrackr is a full-stack experience that makes quantified self data approach
 4. **Review Dashboard** – Back on `/`, highlight the goals, statistics overview, collapsible trends chart, and alert center.
 5. **Send Weekly Report** – Trigger the weekly email from the reminder card or inspect the recommendations list for actionable insights.
 
-## 🧱 Architecture & Stack
-
-- **Framework**: Next.js 15 App Router (React Server Components + Client Components mix)
-- **Language**: TypeScript with strict linting and type checks
-- **Styling**: Tailwind CSS, shadcn/ui, Radix primitives
-- **Animations**: Framer Motion for transitions and onboarding steps
-- **Charts**: Recharts for multi-series visualizations
-- **Auth**: Clerk (bring-your-own session provider)
-- **Data layer**: Local-first storage with Firebase-ready abstractions
 
 ## � Integrations & Automations
 
@@ -99,5 +92,3 @@ src/
 ```
 
 ---
-
-Thank you FLIPR LABS for this surreal learning experience - Team Ice Kings.
